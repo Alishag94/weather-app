@@ -1,0 +1,108 @@
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background-color: #e3f2fd;
+  margin: 0;
+  min-height: 100vh;
+  padding: 0;
+  transition: background 0.6s ease;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+input, button {
+  padding: 12px;
+  font-size: 1rem;
+  border-radius: 6px;
+}
+
+input[type="text"] {
+  border: 1px solid #ccc;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+button {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background-color: #1769aa;
+}
+
+#output {
+  margin-top: 18px;
+  font-weight: bold;
+  font-size: 1.15rem;
+}
+
+#weatherIcon {
+  margin-top: 12px;
+}
+
+#backgroundEffect {
+  min-height: 12rem;
+  min-width: 100%;
+  background: linear-gradient(to bottom right, #e3f2fd, #bbdefb);
+  transition: background 0.6s;
+}
+
+#forecast {
+  margin-top: 1rem;
+}
+
+/* Overlay GIFs (shown/hidden by JS) */
+.weather-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 10;
+  display: none;
+}
+.weather-overlay.active {
+  display: block;
+}
+.weather-overlay img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  opacity: 0.33;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Responsive layout */
+@media screen and (max-width: 700px) {
+  .max-w-5xl {
+    grid-template-columns: 1fr !important;
+  }
+  #backgroundEffect {
+    min-height: 8rem;
+  }
+  h1 {
+    font-size: 2rem;
+  }
+  #output {
+    font-size: 1rem;
+  }
+}
+
+.bg-sun {
+  background: linear-gradient(to bottom right, #fceabb, #f8b500) !important;
+}
+.bg-rain {
+  background: linear-gradient(to bottom right, #4a90e2, #3b5998) !important;
+}
+.bg-snow {
+  background: linear-gradient(to bottom right, #e0f7fa, #b2ebf2) !important;
+}
+.bg-wind {
+  background: linear-gradient(to bottom right, #b0bec5, #eceff1) !important;
+}

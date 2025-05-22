@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title><i>Interactive Weather App</i></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Overlay styling for GIFs */
+    .weather-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+    }
+    .weather-overlay.active { display: block; }
+    .weather-overlay img {
+      width: 100vw; height: 100vh;
+      object-fit: cover;
+      opacity: 0.33;
+      pointer-events: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-gray-800 transition-all duration-300 bg-blue-50">
+
+  <!-- Main App Container -->
+  <div class="max-w-5xl mx-auto p-6 grid md:grid-cols-2 gap-8 items-start relative z-20">
+    <!-- Input & Output Column -->
+    <div class="space-y-4">
+      <h1 class="text-4xl font-bold text-center md:text-left">Interactive Weather App</h1>
+      <div class="flex flex-col gap-4">
+        <label for="cityInput" class="sr-only">City Name</label>
+        <input
+          type="text"
+          id="cityInput"
+          placeholder="Enter city name"
+          class="p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autocomplete="off"
+        />
+        <button
+          id="fetchBtn"
+          class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition"
+        >
+          Get Weather
+        </button>
+        <label class="inline-flex items-center space-x-2">
+          <input type="checkbox" id="unitToggle" class="form-checkbox" />
+          <span>Show in Fahrenheit</span>
+        </label>
+        <p id="output" class="text-lg font-medium mt-2"></p>
+        <div id="forecast" class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6"></div>
+      </div>
+    </div>
+
+    <!-- Weather Icon & Animation Column -->
+    <div class="flex flex-col items-center text-center space-y-4">
+      <img id="weatherIcon" alt="Weather Icon" class="w-24 h-24 hidden transition-all duration-300" />
+      <div id="backgroundEffect" class="w-full h-48 md:h-64 rounded-lg bg-cover bg-center shadow-md relative overflow-hidden"></div>
+    </div>
+  </div>
+
+  <!-- Weather GIF Overlays (hidden by default, toggled by JS) -->
+  <div id="sunOverlay" class="weather-overlay">
+    <img src="https://media1.tenor.com/m/pRduj4zVbowAAAAC/anime-tree.gif" alt="Sunshine rays" />
+  </div>
+  <div id="rainOverlay" class="weather-overlay">
+    <img src="https://media.tenor.com/NdQJBfH-r04AAAAi/rain-minecraft.gif" alt="Rain falling" />
+  </div>
+  <div id="windOverlay" class="weather-overlay">
+    <img src="https://media1.tenor.com/m/FmlePJiQXyAAAAAC/wood-sun.gif" alt="Wind blowing clouds" />
+  </div>
+  <div id="snowOverlay" class="weather-overlay">
+    <img src="https://media.tenor.com/ZHA98gyjeQUAAAAi/snow-day-snowing.gif" alt="Snow falling" />
+  </div>
+
+  <script>
+    // --- Sound Management ---
+    const weatherSounds = {
+      sun: "sounds/birds.mp3",
+      rain: "sounds/rain.mp3",
+      wind: "sounds/wind.mp3",
+      snow: "sounds/snow.mp3",
+    };
+    let currentAudio = null;
+    function playWeatherSound(type) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+      }
+      if (weatherSounds[type]) {
+        currentAudio = new Audio(weatherSounds[type]);
+        currentAudio.loop = true;
+        currentAudio.volume = 0.5;
+        currentAudio.play();
+      }
+    }
+    function stopWeatherSound() {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentAudio = null;
+      }
+    }
+
+    // --- Overlay Management ---
+    function showWeatherOverlay(type) {
+      document.getElementById('sunOverlay').classList.remove('active');
+      document.getElementById('rainOverlay').classList.remove('active');
+      document.getElementById('windOverlay').classList.remove('active');
+      document.getElementById('snowOverlay').classList.remove('active');
+      if (type && document.getElementById(type + 'Overlay')) {
+        document.getElementById(type + 'Overlay').classList.add('active');
+      }
+    }
+
+    // --- Main Weather Fetch ---
+    async function getWeather(cityInput = null) {
+      const city = cityInput || document.getElementById("cityInput").value.trim();
+      const output = document.getElementById("output");
+      const useFahrenheit = document.getElementById("unitToggle").checked;
+      const icon = document.getElementById("weatherIcon");
+      const bg = document.getElementById("backgroundEffect");
+      const forecastElement = document.getElementById("forecast");
+
+      if (!city) {
+        output.textContent = "Please enter a city name.";
+        icon.style.display = "none";
+        bg.style.backgroundImage = "";
+        showWeatherOverlay();
+        stopWeatherSound();
+        return;
+      }
+
+      output.textContent = `Fetching weather for ${city}...`;
+      icon.style.display = "none";
+      showWeatherOverlay();
+      stopWeatherSound();
+      forecastElement.innerHTML = "";
+
+      try {
+        // 1. Geocode
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}`);
+        const geoData = await geoRes.json();
+        if (!geoData.results || geoData.results.length === 0) {
+          output.textContent = "City not found.";
+          return;
+        }
+        const { latitude, longitude, name } = geoData.results[0];
+        const unit = useFahrenheit ? "fahrenheit" : "celsius";
+
+        // 2. Current weather
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=${unit}`);
+        const weatherData = await weatherRes.json();
+        const temp = weatherData.current_weather.temperature;
+        const code = weatherData.current_weather.weathercode;
+
+        output.textContent = `Current temperature in ${name}: ${temp}°${useFahrenheit ? "F" : "C"}`;
+
+        // 3. Weather Icon
+        let iconUrl = "";
+        if ([0, 1].includes(code)) iconUrl = "https://cdn.weatherbit.io/static/img/icons/c01d.png"; // Clear
+        else if ([2, 3].includes(code)) iconUrl = "https://cdn.weatherbit.io/static/img/icons/c02d.png"; // Cloudy/Wind
+        else if ([45, 48].includes(code)) iconUrl = "https://cdn.weatherbit.io/static/img/icons/a05d.png"; // Fog/Wind
+        else if ([51, 61, 63, 80].includes(code)) iconUrl = "https://cdn.weatherbit.io/static/img/icons/r01d.png"; // Rain
+        else if ([71, 73, 75, 85].includes(code)) iconUrl = "https://cdn.weatherbit.io/static/img/icons/s02d.png"; // Snow
+        else iconUrl = "https://cdn.weatherbit.io/static/img/icons/u00d.png";
+        icon.src = iconUrl;
+        icon.style.display = "inline-block";
+
+        // 4. Effects and Sounds
+        // Reset overlays and sounds
+        showWeatherOverlay();
+        stopWeatherSound();
+        // Sun: code 0, 1 | Rain: 51, 61, 63, 80 | Wind: 2, 3, 45, 48 | Snow: 71, 73, 75, 85
+        if ([0, 1].includes(code)) {
+          bg.style.backgroundImage = "linear-gradient(to bottom right, #fceabb, #f8b500)";
+          showWeatherOverlay("sun");
+          playWeatherSound("sun");
+        } else if ([51, 61, 63, 80].includes(code)) {
+          bg.style.backgroundImage = "linear-gradient(to bottom right, #4a90e2, #3b5998)";
+          showWeatherOverlay("rain");
+          playWeatherSound("rain");
+        } else if ([71, 73, 75, 85].includes(code)) {
+          bg.style.backgroundImage = "linear-gradient(to bottom right, #e0f7fa, #b2ebf2)";
+          showWeatherOverlay("snow");
+          playWeatherSound("snow");
+        } else if ([2, 3, 45, 48].includes(code)) {
+          bg.style.backgroundImage = "linear-gradient(to bottom right, #b0bec5, #eceff1)";
+          showWeatherOverlay("wind");
+          playWeatherSound("wind");
+        } else {
+          bg.style.backgroundImage = "linear-gradient(to bottom right, #dddddd, #eeeeee)";
+          showWeatherOverlay();
+          stopWeatherSound();
+        }
+
+        // 5. 7-day forecast
+        const forecastRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`
+        );
+        const forecastData = await forecastRes.json();
+        const days = forecastData.daily.time;
+        const tempsMax = forecastData.daily.temperature_2m_max;
+        const tempsMin = forecastData.daily.temperature_2m_min;
+        const codes = forecastData.daily.weathercode;
+
+        for (let i = 0; i < days.length; i++) {
+          const date = new Date(days[i]).toLocaleDateString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+
+          let forecastIcon = "";
+          if ([0, 1].includes(codes[i])) forecastIcon = "https://cdn.weatherbit.io/static/img/icons/c01d.png";
+          else if ([2, 3].includes(codes[i])) forecastIcon = "https://cdn.weatherbit.io/static/img/icons/c02d.png";
+          else if ([45, 48].includes(codes[i])) forecastIcon = "https://cdn.weatherbit.io/static/img/icons/a05d.png";
+          else if ([51, 61, 63, 80].includes(codes[i])) forecastIcon = "https://cdn.weatherbit.io/static/img/icons/r01d.png";
+          else if ([71, 73, 75, 85].includes(codes[i])) forecastIcon = "https://cdn.weatherbit.io/static/img/icons/s02d.png";
+          else forecastIcon = "https://cdn.weatherbit.io/static/img/icons/u00d.png";
+
+          forecastElement.innerHTML += `
+            <div class="bg-white/80 backdrop-blur-md rounded-xl shadow-md p-4 flex flex-col items-center space-y-2">
+              <div class="text-sm font-medium">${date}</div>
+              <img src="${forecastIcon}" alt="" class="w-10 h-10" />
+              <div class="text-sm">
+                <span class="font-semibold">${tempsMax[i]}&deg;</span> / <span>${tempsMin[i]}&deg;</span>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        output.textContent = "Something went wrong. Try again later.";
+        icon.style.display = "none";
+        showWeatherOverlay();
+        stopWeatherSound();
+        console.error("Error:", error);
+      }
+    }
+
+    // --- Auto-location on load ---
+    window.onload = function () {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}`);
+            const data = await res.json();
+            if (data && data.name) {
+              document.getElementById("cityInput").value = data.name;
+              getWeather(data.name);
+            }
+          } catch (err) {
+            console.error("Location error:", err);
+          }
+        });
+      }
+    };
+
+    // --- Event Listeners ---
+    document.getElementById('fetchBtn').addEventListener('click', () => getWeather());
+    document.getElementById('unitToggle').addEventListener('change', () => getWeather());
+    document.getElementById('cityInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') getWeather();
+    });
+  </script>
+</body>
+</html>
