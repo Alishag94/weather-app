@@ -39,6 +39,40 @@ index.html      - Main app layout
 style.css       - Custom styles + background animations
 script.js       - Logic for fetching & displaying weather
 
+🧭 How to Navigate & Run the Code
+
+Clone this repository:
+
+```git clone https://github.com/Alishag94/weather-app.git```
+
+Navigate to the project folder:
+
+```cd weather-app```
+
+Run the app:
+
+```Open index.html in your browser.```
+
+🧪 What I Learned
+
+How to use APIs in JavaScript
+
+Handling user input and asynchronous requests
+
+Error handling and user feedback
+
+Multi-city weather comparison logic
+
+Improving app performance and layout using AI tools
+
+🚧 Challenges
+
+Managing API responses and chaining async requests was initially tricky
+
+Handling edge cases like invalid cities or empty input
+
+Merging Git conflicts during deployment setup
+
 ✨ Future Improvements
 
 - Add hourly forecast
